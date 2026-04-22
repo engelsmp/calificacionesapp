@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuthStore } from '../store/authStore';
 import { supabase } from '../lib/supabase';
-import { LogIn, User, ShieldAlert } from 'lucide-react';
+import { LogIn, } from 'lucide-react';
 
 export default function Login() {
   const [cedula, setCedula] = useState('');

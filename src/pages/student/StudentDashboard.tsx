@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuthStore } from '../../store/authStore';
 import { supabase } from '../../lib/supabase';
-import { LogOut, Loader2, User } from 'lucide-react';
+import { LogOut, Loader2, } from 'lucide-react';
 import { StatsCards } from '../../components/StatsCards';
 import { ModulosChart, TemasChart, ActividadesChart } from '../../components/Charts';
 
@@ -102,7 +102,7 @@ export default function StudentDashboard() {
   const notas = calificaciones.map(c => c.calificacion);
   const maxCal = calificaciones.length > 0 ? calificaciones.reduce((prev, current) => (prev.calificacion > current.calificacion) ? prev : current) : null;
   const minCal = calificaciones.length > 0 ? calificaciones.reduce((prev, current) => (prev.calificacion < current.calificacion) ? prev : current) : null;
-  
+
   const alta = {
     valor: maxCal ? maxCal.calificacion : 0,
     actividad: maxCal ? maxCal.actividad : '-'

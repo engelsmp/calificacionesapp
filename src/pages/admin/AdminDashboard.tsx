@@ -4,7 +4,7 @@ import { useAuthStore } from '../../store/authStore';
 import UploadExcel from '../../components/UploadExcel';
 import { StudentSelector } from '../../components/StudentSelector';
 import { supabase } from '../../lib/supabase';
-import { Shield, LogOut, Loader2, Users } from 'lucide-react';
+import { LogOut, Loader2, Users } from 'lucide-react';
 import { StatsCards } from '../../components/StatsCards';
 import { ModulosChart, TemasChart } from '../../components/Charts';
 
@@ -69,13 +69,13 @@ export default function AdminDashboard() {
           participante: partRes.data,
           asistencias: totalAsistencias,
           stats: {
-            alta: { 
-              valor: maxCal ? maxCal.calificacion : 0, 
-              actividad: maxCal ? maxCal.actividad : '-' 
+            alta: {
+              valor: maxCal ? maxCal.calificacion : 0,
+              actividad: maxCal ? maxCal.actividad : '-'
             },
-            baja: { 
-              valor: minCal ? minCal.calificacion : 0, 
-              actividad: minCal ? minCal.actividad : '-' 
+            baja: {
+              valor: minCal ? minCal.calificacion : 0,
+              actividad: minCal ? minCal.actividad : '-'
             },
             promedio: notas.length > 0 ? notas.reduce((a, b) => a + b, 0) / notas.length : 0,
           },
