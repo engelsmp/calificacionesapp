@@ -1,4 +1,4 @@
-import { Trophy, TrendingDown, Target, UserCheck, BookOpen, Clock } from 'lucide-react';
+import { Trophy, TrendingDown, Target, UserCheck, Clock } from 'lucide-react';
 
 interface StatsProps {
   alta: { valor: number; actividad: string };
