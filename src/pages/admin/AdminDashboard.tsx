@@ -4,9 +4,14 @@ import { useAuthStore } from '../../store/authStore';
 import UploadExcel from '../../components/UploadExcel';
 import { StudentSelector } from '../../components/StudentSelector';
 import { supabase } from '../../lib/supabase';
-import { LogOut, Loader2, Users } from 'lucide-react';
+import { LogOut, Loader2, Users, FileDown } from 'lucide-react';
 import { StatsCards } from '../../components/StatsCards';
 import { ModulosChart, TemasChart } from '../../components/Charts';
+import { jsPDF } from 'jspdf';
+import { applyPlugin } from 'jspdf-autotable';
+
+// Register the autoTable plugin with jsPDF
+applyPlugin(jsPDF);
 
 export default function AdminDashboard() {
   const { isAdmin, logout } = useAuthStore();
@@ -15,6 +20,130 @@ export default function AdminDashboard() {
   const [selectedStudent, setSelectedStudent] = useState<string | null>(null);
   const [studentData, setStudentData] = useState<any>(null);
   const [loadingStudent, setLoadingStudent] = useState(false);
+  const [generatingPDF, setGeneratingPDF] = useState(false);
+
+  const generatePDF = async () => {
+    setGeneratingPDF(true);
+    try {
+      // Fetch all participantes
+      const { data: participantes, error: partErr } = await supabase
+        .from('participantes')
+        .select('cedula, nombre')
+        .order('nombre');
+
+      if (partErr) throw partErr;
+      if (!participantes || participantes.length === 0) {
+        alert('No hay participantes registrados.');
+        setGeneratingPDF(false);
+        return;
+      }
+
+      // Fetch all calificaciones
+      const { data: calificaciones, error: calErr } = await supabase
+        .from('calificaciones')
+        .select('cedula, calificacion');
+
+      if (calErr) throw calErr;
+
+      // Calculate average grade per student
+      const gradesMap = new Map<string, { sum: number; count: number }>();
+      (calificaciones || []).forEach((c: any) => {
+        const current = gradesMap.get(c.cedula) || { sum: 0, count: 0 };
+        current.sum += Number(c.calificacion) || 0;
+        current.count += 1;
+        gradesMap.set(c.cedula, current);
+      });
+
+      // Build table rows
+      const rows = participantes.map((p: any) => {
+        const grades = gradesMap.get(p.cedula);
+        const promedio = grades && grades.count > 0 ? grades.sum / grades.count : 0;
+        return [
+          p.cedula,
+          p.nombre || '-',
+          promedio.toFixed(2)
+        ];
+      });
+
+      // Generate PDF — compact layout to fit on a single page
+      const doc = new jsPDF();
+      const pageWidth = doc.internal.pageSize.getWidth();
+      const centerX = pageWidth / 2;
+
+      // Compact header background (30mm tall)
+      doc.setFillColor(15, 23, 42);
+      doc.rect(0, 0, pageWidth, 30, 'F');
+
+      // Title
+      doc.setTextColor(255, 255, 255);
+      doc.setFontSize(16);
+      doc.setFont('helvetica', 'bold');
+      doc.text('Reporte de Calificaciones', centerX, 12, { align: 'center' });
+
+      // Subtitle + Date on same line
+      doc.setFontSize(9);
+      doc.setFont('helvetica', 'normal');
+      doc.setTextColor(180, 190, 210);
+      doc.text(
+        `Moronta Virtual Class  \u2022  ${new Date().toLocaleDateString('es-DO', { year: 'numeric', month: 'long', day: 'numeric' })}`,
+        centerX, 21, { align: 'center' }
+      );
+
+      // Participant count badge
+      doc.setFontSize(8);
+      doc.setTextColor(148, 163, 184);
+      doc.text(`Total participantes: ${participantes.length}`, centerX, 27, { align: 'center' });
+
+      // Table — compact styling to fit all rows on one page
+      (doc as any).autoTable({
+        startY: 34,
+        head: [['C\u00e9dula', 'Nombre Completo', 'Promedio General']],
+        body: rows,
+        theme: 'grid',
+        headStyles: {
+          fillColor: [30, 58, 138],
+          textColor: [255, 255, 255],
+          fontSize: 9,
+          fontStyle: 'bold',
+          halign: 'center',
+          cellPadding: 2.5,
+        },
+        bodyStyles: {
+          fontSize: 8,
+          textColor: [30, 41, 59],
+          cellPadding: 2,
+        },
+        alternateRowStyles: {
+          fillColor: [241, 245, 249],
+        },
+        columnStyles: {
+          0: { halign: 'center', cellWidth: 40 },
+          1: { halign: 'left' },
+          2: { halign: 'center', cellWidth: 38 },
+        },
+        margin: { left: 14, right: 14 },
+        styles: {
+          lineColor: [203, 213, 225],
+          lineWidth: 0.2,
+          overflow: 'ellipsize',
+        },
+      });
+
+      // Footer
+      doc.setFontSize(7);
+      doc.setTextColor(148, 163, 184);
+      doc.text('P\u00e1gina 1 de 1', centerX, doc.internal.pageSize.getHeight() - 8, { align: 'center' });
+
+      // Save using jsPDF native save (best cross-browser support)
+      const fileName = `Reporte_Calificaciones_${new Date().toISOString().split('T')[0]}.pdf`;
+      doc.save(fileName);
+    } catch (err) {
+      console.error('Error generating PDF:', err);
+      alert('Error al generar el reporte PDF. Revise la consola del navegador para más detalles.');
+    } finally {
+      setGeneratingPDF(false);
+    }
+  };
 
   useEffect(() => {
     if (!isAdmin) {
@@ -114,13 +243,23 @@ export default function AdminDashboard() {
           </div>
         </div>
 
-        <button
-          onClick={() => { logout(); navigate('/'); }}
-          className="flex items-center space-x-2 px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-lg transition-colors border border-slate-700"
-        >
-          <LogOut size={18} />
-          <span className="hidden sm:inline">Cerrar Sesión</span>
-        </button>
+        <div className="flex items-center space-x-3">
+          <button
+            onClick={generatePDF}
+            disabled={generatingPDF}
+            className="flex items-center space-x-2 px-4 py-2 bg-blue-600 hover:bg-blue-500 disabled:opacity-50 disabled:cursor-not-allowed text-white rounded-lg transition-all duration-200 border border-blue-500 shadow-lg shadow-blue-500/20 hover:shadow-blue-500/40"
+          >
+            {generatingPDF ? <Loader2 size={18} className="animate-spin" /> : <FileDown size={18} />}
+            <span className="hidden sm:inline">{generatingPDF ? 'Generando...' : 'Reporte PDF'}</span>
+          </button>
+          <button
+            onClick={() => { logout(); navigate('/'); }}
+            className="flex items-center space-x-2 px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-lg transition-colors border border-slate-700"
+          >
+            <LogOut size={18} />
+            <span className="hidden sm:inline">Cerrar Sesión</span>
+          </button>
+        </div>
       </header>
 
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 flex-1 min-h-0">

@@ -11,7 +11,8 @@ export default function Login() {
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
-  const { login, loginAdmin } = useAuthStore();
+  const { login, setAdminStatus } = useAuthStore();
+
 
   const handleStudentLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -43,16 +44,31 @@ export default function Login() {
     }
   };
 
-  const handleAdminLogin = (e: React.FormEvent) => {
+  const handleAdminLogin = async (e: React.FormEvent) => {
     e.preventDefault();
-    // Hardcoded password as requested
-    if (password === '573643') {
-      loginAdmin();
-      navigate('/admin');
-    } else {
-      setError('Contraseña incorrecta');
+    setLoading(true);
+    setError('');
+    
+    try {
+      const { data, error } = await supabase.auth.signInWithPassword({
+        email: 'engelsmp3@hotmail.com',
+        password: password,
+      });
+
+
+      if (error) {
+        setError('Acceso denegado: ' + error.message);
+      } else if (data.user) {
+        setAdminStatus(true);
+        navigate('/admin');
+      }
+    } catch (err) {
+      setError('Error al conectar con el servidor.');
+    } finally {
+      setLoading(false);
     }
   };
+
 
   return (
     <div className="min-h-screen bg-slate-950 flex flex-col justify-center items-center p-4 relative overflow-hidden">
