@@ -7,7 +7,7 @@ import { StatsCards } from '../../components/StatsCards';
 import { ModulosChart, TemasChart, ActividadesChart } from '../../components/Charts';
 
 export default function StudentDashboard() {
-  const { cedula, logout } = useAuthStore();
+  const { cedula, pin, logout } = useAuthStore();
   const navigate = useNavigate();
 
   const [loading, setLoading] = useState(true);
@@ -16,23 +16,30 @@ export default function StudentDashboard() {
   const [asistencias, setAsistencias] = useState({ presencias: 0, ausencias: 0 });
 
   useEffect(() => {
-    if (!cedula) {
+    if (!cedula || !pin) {
       navigate('/');
       return;
     }
 
     const fetchData = async () => {
       try {
-        const [partRes, calRes, asisRes] = await Promise.all([
-          supabase.from('participantes').select('*').eq('cedula', cedula).single(),
-          supabase.from('calificaciones').select('*').eq('cedula', cedula),
-          supabase.from('asistencias').select('*').eq('cedula', cedula)
-        ]);
+        const { data, error } = await supabase.rpc('get_student_complete_data', {
+          p_cedula: cedula,
+          p_pin: pin
+        });
 
-        if (partRes.data) setParticipante(partRes.data);
-        if (calRes.data) setCalificaciones(calRes.data);
-        if (asisRes.data) {
-          const totalAsistencias = asisRes.data.reduce((acc: any, curr: any) => ({
+        if (error || (data as any).error) {
+          console.error('Error fetching data:', error || (data as any).error);
+          logout();
+          navigate('/');
+          return;
+        }
+
+        const studentData = data as any;
+        if (studentData.participante) setParticipante(studentData.participante);
+        if (studentData.calificaciones) setCalificaciones(studentData.calificaciones);
+        if (studentData.asistencias) {
+          const totalAsistencias = studentData.asistencias.reduce((acc: any, curr: any) => ({
             presencias: acc.presencias + (Number(curr.presencias) || 0),
             ausencias: acc.ausencias + (Number(curr.ausencias) || 0)
           }), { presencias: 0, ausencias: 0 });
@@ -46,7 +53,7 @@ export default function StudentDashboard() {
     };
 
     fetchData();
-  }, [cedula, navigate]);
+  }, [cedula, pin, navigate, logout]);
 
   const handleLogout = () => {
     logout();

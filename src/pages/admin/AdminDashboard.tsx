@@ -292,8 +292,27 @@ export default function AdminDashboard() {
               <div className="flex items-center justify-between pb-4 border-b border-slate-800">
                 <div>
                   <h2 className="text-2xl font-bold text-white">{studentData.participante?.nombre}</h2>
-                  <p className="text-slate-400">CI: {selectedStudent} • {studentData.participante?.correo} • {studentData.participante?.telefono}</p>
+                  <div className="flex items-center space-x-3 text-slate-400">
+                    <p>CI: {selectedStudent} • {studentData.participante?.correo} • {studentData.participante?.telefono}</p>
+                    <span className={`px-2 py-0.5 rounded text-xs font-medium ${studentData.participante?.pin ? 'bg-green-500/10 text-green-400' : 'bg-yellow-500/10 text-yellow-400'}`}>
+                      {studentData.participante?.pin ? 'PIN Activo' : 'Sin PIN'}
+                    </span>
+                  </div>
                 </div>
+
+                {studentData.participante?.pin && (
+                  <button
+                    onClick={async () => {
+                      if (!confirm('¿Estás seguro de resetear el PIN de este estudiante?')) return;
+                      const { error } = await supabase.from('participantes').update({ pin: null }).eq('cedula', selectedStudent);
+                      if (error) alert('Error: ' + error.message);
+                      else { alert('PIN reseteado'); setRefresh(r => r + 1); }
+                    }}
+                    className="text-xs text-red-400 hover:text-red-300 transition-colors bg-red-500/10 hover:bg-red-500/20 px-3 py-2 rounded-lg border border-red-500/20"
+                  >
+                    Resetear PIN
+                  </button>
+                )}
               </div>
 
               <StatsCards
